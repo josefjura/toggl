@@ -1,80 +1,32 @@
-use clap::Parser;
-use config::{Config, ConfigError, Environment, File, FileFormat};
-use directories::ProjectDirs;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use crate::{
+    cli::{init_args, Command},
+    config::{init_config, ConfigError},
+};
 
 #[derive(Debug, Error)]
 pub enum StartupError {
     #[error("unable to find default config path")]
-    ConfigPathError,
-    #[error("unable to initialize config")]
-    ConfigInitError(ConfigError),
-    #[error("unable to deserialize config")]
-    ConfigDeserializationError(ConfigError),
-    #[error("missing API key")]
-    MissingAPIKey,
+    ConfigurationError(ConfigError),
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct TogglConfig {
-    #[serde(default)]
-    api_key: Option<String>,
-}
-
-#[derive(Debug, Parser)]
-
-struct TogglArgs {
-    /// Key for Toggl API
-    #[arg(long, short = 'k')]
+#[derive(Debug)]
+pub struct Config {
     pub api_key: Option<String>,
+    pub command: Command,
 }
 
-const QUALIFIER: &str = "org";
-const ORGANIZATION: &str = "beardo";
-const APPLICATION: &str = "toggl-tui";
-const FILE_NAME: &str = "toml.init";
-const ENV_PREFIX: &str = "TOGGL";
-
-impl TogglConfig {
-    fn init_config() -> Result<Self, StartupError> {
-        let dirs = ProjectDirs::from(QUALIFIER, ORGANIZATION, APPLICATION);
-
-        let config_path = dirs
-            .map(|d| d.config_dir().join(FILE_NAME))
-            .map(|d| d.to_str().unwrap().to_string())
-            .ok_or(StartupError::ConfigPathError)?;
-
-        let s = Config::builder()
-            // Start off by merging in the "default" configuration file
-            .add_source(File::new(&config_path, FileFormat::Toml).required(false))
-            .add_source(Environment::with_prefix(ENV_PREFIX).separator("_"))
-            .build()
-            .map_err(StartupError::ConfigInitError)?;
-
-        s.try_deserialize()
-            .map_err(StartupError::ConfigDeserializationError)
-    }
-}
-pub struct Startup {
-    pub api_key: String,
-}
-
-impl Startup {
-    fn init_args() -> TogglArgs {
-        TogglArgs::parse()
-    }
-
+impl Config {
     fn merge_values() -> Result<Self, StartupError> {
-        let config = TogglConfig::init_config()?;
-        let args = Self::init_args();
-
-        let api_key = args
-            .api_key
-            .or_else(|| config.api_key)
-            .ok_or(StartupError::MissingAPIKey)?;
-
-        Ok(Self { api_key })
+        let config = init_config().map_err(StartupError::ConfigurationError)?;
+        let args = init_args();
+        let command = args.command();
+        Ok(Self {
+            // If `args.api_key` is None, fallback to `config.api_key`
+            api_key: args.api_key.or(config.map(|c| c.api_key).unwrap_or(None)),
+            command,
+        })
     }
 
     pub fn new() -> Result<Self, StartupError> {
