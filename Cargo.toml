@@ -20,3 +20,4 @@ directories = "5.0.1"
 keyring = "2.3.2"
 toml = "0.8.12"
 chrono = { version = "0.4.38", features = ["serde"] }
+cliclack = "0.2.5"

@@ -11,15 +11,18 @@ use crossterm::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Task {
+pub struct Entry {
     pub id: i64,
     pub workspace_id: i64,
     pub description: String,
+    pub billable: bool,
     pub start: DateTime<Utc>,
     pub stop: Option<DateTime<Utc>>,
+    pub task_id: Option<i64>,
+    pub project_id: Option<i64>,
 }
 
-impl Display for Task {
+impl Display for Entry {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut stdout = io::stdout();
 

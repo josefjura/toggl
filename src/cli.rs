@@ -8,11 +8,37 @@ pub struct TogglArgs {
     pub api_key: Option<String>,
 
     #[clap(subcommand)]
-    command: Option<Command>,
+    command: Option<TogglCommand>,
 }
 
 #[derive(Debug, Parser, Clone)]
-pub enum Command {
+pub enum TogglCommand {
+    /// Auth subcommands
+    Auth {
+        #[clap(subcommand)]
+        command: AuthCommand,
+    },
+    /// Get profile information
+    Me,
+    /// Get my time entries
+    Mine,
+    /// Get last time entry
+    Last,
+    /// Show currently running task
+    Current,
+    /// Show today's tasks
+    Today,
+    /// Stop the currently running task
+    Stop,
+    /// Restart last task
+    Restart,
+    /// Run in interactive mode
+    #[clap(name = "interactive", short_flag = 'i')]
+    Interactive,
+}
+
+#[derive(Debug, Parser, Clone)]
+pub enum AuthCommand {
     /// Set the password in the secure store
     Key {
         #[clap(value_parser)]
@@ -20,23 +46,19 @@ pub enum Command {
         /// is collected interactively from the terminal
         api_key: String,
     },
-    /// Get profile information
-    Me,
-    /// Show currently running task
-    Current,
-    /// Show today's tasks
-    Today,
-    /// Run in interactive mode
-    #[clap(name = "interactive", short_flag = 'i')]
-    Interactive,
-    /// Restart the last task
-    #[clap(name = "restart")]
-    RestartLast,
+    Login {
+        /// The username to use
+        #[clap(value_parser)]
+        username: String,
+        /// The password to use
+        #[clap(value_parser)]
+        password: String,
+    },
 }
 
 impl TogglArgs {
-    pub fn command(&self) -> Command {
-        self.command.clone().unwrap_or(Command::Interactive)
+    pub fn command(&self) -> TogglCommand {
+        self.command.clone().unwrap_or(TogglCommand::Interactive)
     }
 }
 

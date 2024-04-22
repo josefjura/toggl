@@ -1,6 +1,6 @@
 use api::URL;
 
-use cli::Command;
+use cli::{AuthCommand, TogglCommand};
 
 use crate::startup::Config;
 
@@ -8,16 +8,23 @@ mod api;
 mod cli;
 mod commands;
 mod config;
+mod entry;
 mod startup;
-mod task;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let startup = Config::new()?;
 
     match startup.command {
-        Command::Key { api_key } => {
-            commands::run_login(api_key).await?;
+        TogglCommand::Auth {
+            command: AuthCommand::Key { api_key },
+        } => {
+            commands::store_key(api_key).await?;
+        }
+        TogglCommand::Auth {
+            command: AuthCommand::Login { username, password },
+        } => {
+            commands::run_login(&username, &password).await?;
         }
         _ => {
             // Handle other cases in a nested match
@@ -30,21 +37,29 @@ async fn main() -> anyhow::Result<()> {
             };
 
             match startup.command {
-                Command::Me => {
+                TogglCommand::Me => {
                     commands::run_info(&api).await?;
                 }
-                Command::Current => {
+                TogglCommand::Stop => {
+                    commands::run_stop(&api).await?;
+                }
+                TogglCommand::Current => {
                     commands::run_current(&api).await?;
                 }
-                Command::Today => {
+                TogglCommand::Today => {
                     commands::run_todays(&api).await?;
                 }
-                Command::RestartLast => {
-                    // Restart latest task
-                    commands::run_restart_latest(&api).await?;
+                TogglCommand::Mine => {
+                    commands::run_mine(&api).await?;
                 }
-                Command::Interactive => run_interactive(),
-                Command::Key { .. } => unreachable!(), // Already handled above
+                TogglCommand::Last => {
+                    commands::run_last(&api).await?;
+                }
+                TogglCommand::Restart => {
+                    commands::run_restart(&api).await?;
+                }
+                TogglCommand::Interactive => run_interactive(),
+                TogglCommand::Auth { .. } => unreachable!(), // Already handled above
             }
         }
     }

@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::{
-    cli::{init_args, Command},
+    cli::{init_args, TogglCommand},
     config::{init_config, ConfigError},
 };
 
@@ -14,7 +14,7 @@ pub enum StartupError {
 #[derive(Debug)]
 pub struct Config {
     pub api_key: Option<String>,
-    pub command: Command,
+    pub command: TogglCommand,
 }
 
 impl Config {

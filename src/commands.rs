@@ -1,21 +1,55 @@
 use std::io::{stdout, Write};
 
 use crossterm::{
-    execute, queue,
+    queue,
     style::{Print, Stylize},
 };
 
 use crate::{api::Api, config};
 
-pub async fn run_login(api_key: String) -> anyhow::Result<()> {
+pub async fn store_key(api_key: String) -> anyhow::Result<()> {
     let result = config::save_api_key(&api_key);
 
     let path = config::get_directory_path()?;
 
     match result {
-        Ok(_) => println!("API key saved successfully to {:?}", path),
-        Err(e) => eprintln!("Error saving API key: {}", e),
+        Ok(_) => println!("✅ API key saved successfully to {:?}", path),
+        Err(e) => eprintln!("⛔ Error saving API key: {}", e),
     }
+
+    Ok(())
+}
+
+pub async fn run_login(username: &str, password: &str) -> anyhow::Result<()> {
+    let api_key = Api::get_api_key(username, password).await?;
+
+    let result = config::save_api_key(&api_key);
+    let path = config::get_directory_path()?;
+
+    match result {
+        Ok(_) => println!("✅ API key saved successfully to {:?}", path),
+        Err(e) => eprintln!("⛔ Error saving API key: {}", e),
+    }
+
+    Ok(())
+}
+
+pub async fn run_stop(api: &Api) -> anyhow::Result<()> {
+    let entry = api.get_current().await?;
+    let mut stdout = stdout();
+
+    match entry {
+        Some(entry) => {
+            queue!(stdout, Print("⏳ Found running task ... stopping task\n"),)?;
+            api.stop_entry(entry.workspace_id, entry.id).await?;
+            queue!(stdout, Print("✅ Task stopped successfully\n"))?;
+        }
+        None => {
+            queue!(stdout, Print("No current task.".yellow()), Print("\n"))?;
+        }
+    }
+
+    stdout.flush()?;
 
     Ok(())
 }
@@ -73,11 +107,47 @@ pub async fn run_todays(api: &Api) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn run_restart_latest(api: &Api) -> anyhow::Result<()> {
-    api.restart_latest().await?;
+pub async fn run_mine(api: &Api) -> anyhow::Result<()> {
+    let tasks = api.get_mine().await?;
     let mut stdout = stdout();
 
-    execute!(stdout, Print("----".yellow()), Print("\n"))?;
+    for task in tasks {
+        queue!(stdout, Print(task))?;
+    }
+
+    stdout.flush()?;
+
+    Ok(())
+}
+
+pub async fn run_last(api: &Api) -> anyhow::Result<()> {
+    let tasks = api.get_mine().await?;
+    let first = tasks.first();
+
+    let mut stdout = stdout();
+
+    if let Some(entry) = first {
+        queue!(stdout, Print(entry))?;
+    }
+
+    stdout.flush()?;
+
+    Ok(())
+}
+
+pub async fn run_restart(api: &Api) -> anyhow::Result<()> {
+    let tasks = api.get_mine().await?;
+    let first = tasks.first();
+
+    if first.is_none() {
+        return Err(anyhow::Error::msg("No tasks found"));
+    }
+
+    let task = api.start_entry(first.unwrap()).await?;
+
+    let mut stdout = stdout();
+
+    queue!(stdout, Print(task))?;
 
     stdout.flush()?;
 
